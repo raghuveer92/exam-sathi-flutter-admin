@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/exam_model.dart';
@@ -197,6 +198,14 @@ class _ExamsScreenState extends State<ExamsScreen> {
                           ),
                         ],
                       ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.list_alt_rounded),
+                      tooltip: 'Manage Subjects',
+                      onPressed: () => context.go(
+                          '/exams/${exam.id}/subjects',
+                          extra: exam.name),
+                      color: AdminColors.primary,
                     ),
                     IconButton(
                       icon: const Icon(Icons.edit_outlined),

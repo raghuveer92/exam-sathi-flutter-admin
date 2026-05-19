@@ -9,6 +9,7 @@ import '../../presentation/screens/dashboard/dashboard_screen.dart';
 import '../../presentation/screens/exams/exams_screen.dart';
 import '../../presentation/screens/students/students_screen.dart';
 import '../../presentation/screens/shell/admin_shell.dart';
+import '../../presentation/screens/subjects/subjects_screen.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -38,6 +39,19 @@ class AppRouter {
           GoRoute(
             path: '/exams',
             builder: (_, __) => const ExamsScreen(),
+            routes: [
+              GoRoute(
+                path: ':examId/subjects',
+                builder: (context, state) {
+                  final examId =
+                      int.parse(state.pathParameters['examId']!);
+                  final examName =
+                      state.extra as String? ?? 'Subjects';
+                  return SubjectsScreen(
+                      examId: examId, examName: examName);
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: '/students',

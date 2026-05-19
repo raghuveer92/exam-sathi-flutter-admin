@@ -6,9 +6,11 @@ import '../../core/network/api_client.dart';
 import '../../data/repositories/admin_repository.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/exam_repository.dart';
+import '../../data/repositories/subject_repository.dart';
 import '../../presentation/blocs/admin/admin_bloc.dart';
 import '../../presentation/blocs/auth/auth_bloc.dart';
 import '../../presentation/blocs/exam/exam_bloc.dart';
+import '../../presentation/blocs/subject/subject_bloc.dart';
 
 Future<void> setupDependencies() async {
   final sl = GetIt.I;
@@ -28,6 +30,8 @@ Future<void> setupDependencies() async {
       () => AdminRepository(client: sl<ApiClient>()));
   sl.registerLazySingleton<ExamRepository>(
       () => ExamRepository(client: sl<ApiClient>()));
+  sl.registerLazySingleton<SubjectRepository>(
+      () => SubjectRepository(client: sl<ApiClient>()));
 
   sl.registerFactory<AuthBloc>(
       () => AuthBloc(authRepository: sl<AuthRepository>()));
@@ -35,4 +39,6 @@ Future<void> setupDependencies() async {
       () => AdminBloc(repository: sl<AdminRepository>()));
   sl.registerFactory<ExamBloc>(
       () => ExamBloc(repository: sl<ExamRepository>()));
+  sl.registerFactory<SubjectBloc>(
+      () => SubjectBloc(repository: sl<SubjectRepository>()));
 }
