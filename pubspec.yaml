@@ -1,0 +1,48 @@
+name: admin_web_flutter
+description: ExamSaathi - Admin Dashboard Web App
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_bloc: ^8.1.6
+  bloc: ^8.1.4
+  equatable: ^2.0.5
+
+  # Navigation
+  go_router: ^14.2.0
+
+  # Networking
+  dio: ^5.4.3+1
+
+  # Charts
+  fl_chart: ^0.68.0
+
+  # UI
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.1
+
+  # Utilities
+  intl: ^0.19.0
+  get_it: ^7.7.0
+  flutter_secure_storage: ^9.2.2
+  logger: ^2.4.0
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/
