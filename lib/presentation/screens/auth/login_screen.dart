@@ -62,25 +62,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Logo
-                      Container(
-                        width: 72,
-                        height: 72,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          gradient: AdminColors.primaryGradient,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AdminColors.primary.withOpacity(0.4),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            )
-                          ],
+                      Center(
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          width: 140,
+                          height: 140,
                         ),
-                        child: const Icon(Icons.school,
-                            size: 36, color: Colors.white),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
                       Text(
                         'ExamSaathi Admin',
                         style: Theme.of(context).textTheme.headlineLarge,

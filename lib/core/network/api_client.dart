@@ -45,10 +45,21 @@ class ApiClient {
       },
       onError: (error, handler) {
         _logger.e('API Error: ${error.message}', error: error);
-        if (error.response != null) {
-          _logger.e('Response body: ${error.response?.data}');
+        final data = error.response?.data;
+        final msg = (data is Map<String, dynamic>) ? data['message'] as String? : null;
+        if (msg != null) {
+          handler.reject(DioException(
+            requestOptions: error.requestOptions,
+            response: error.response,
+            message: msg,
+            type: error.type,
+          ));
+        } else {
+          if (error.response != null) {
+            _logger.e('Response body: ${error.response?.data}');
+          }
+          handler.next(error);
         }
-        handler.next(error);
       },
     ));
   }

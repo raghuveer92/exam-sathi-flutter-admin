@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/subject_model.dart';
@@ -296,6 +297,14 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                         icon: const Icon(Icons.delete_outline),
                         onPressed: () => _confirmDelete(sub),
                         color: AdminColors.error,
+                      ),
+                      TextButton.icon(
+                        icon: const Icon(Icons.menu_book_rounded, size: 18),
+                        label: const Text('Chapters'),
+                        onPressed: () => context.go(
+                          '/exams/${widget.examId}/subjects/${sub.id}/chapters',
+                          extra: sub.name,
+                        ),
                       ),
                     ],
                   ),

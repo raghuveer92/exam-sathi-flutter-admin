@@ -24,7 +24,15 @@ class ApiEndpoints {
 
   // Syllabus
   static String chaptersBySubject(int subjectId) =>
-      '/syllabus/subjects/$subjectId/chapters';
+      '/syllabus/chapters/subject/$subjectId';
+  static String chapterById(int id) => '/syllabus/chapters/$id';
+  static const String createChapter = '/syllabus/chapters';
+  static String updateChapter(int id) => '/syllabus/chapters/$id';
+  static String deleteChapter(int id) => '/syllabus/chapters/$id';
+
   static String topicsByChapter(int chapterId) =>
-      '/syllabus/chapters/$chapterId/topics';
+      '/syllabus/topics/chapter/$chapterId';
+  static const String createTopic = '/syllabus/topics';
+  static String updateTopic(int id) => '/syllabus/topics/$id';
+  static String deleteTopic(int id) => '/syllabus/topics/$id';
 }

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -67,7 +68,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await _repo.login(event.email, event.password);
       emit(AuthAuthenticated());
     } catch (e) {
-      emit(AuthError(e.toString().replaceAll('Exception: ', '')));
+      if (e is DioException && e.message != null && e.message!.isNotEmpty) {
+        emit(AuthError(e.message!));
+      } else {
+        final s = e.toString();
+        emit(AuthError(s.contains('Exception: ') ? s.split('Exception: ').last.trim() : s));
+      }
     }
   }
 
