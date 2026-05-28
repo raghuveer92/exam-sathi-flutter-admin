@@ -4,7 +4,6 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../../data/models/exam_model.dart';
 import '../../../data/models/subject_model.dart';
 import '../../../data/repositories/exam_repository.dart';
 import '../../../data/repositories/subject_repository.dart';
@@ -198,27 +197,36 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
       await showDialog(
         context: context,
         builder: (ctx) {
-          ExamModel selectedExam = sourceExams.first;
+          int selectedExamId = sourceExams.first.id;
           List<SubjectModel> sourceSubjects = [];
-          SubjectModel? selectedSubject;
+          int? selectedSubjectId;
           bool loadingSubjects = true;
           String? loadError;
+          bool initialLoadTriggered = false;
+          int loadRequestId = 0;
 
           Future<void> loadSubjects(StateSetter setDialogState) async {
+            final requestId = ++loadRequestId;
             setDialogState(() {
               loadingSubjects = true;
               loadError = null;
             });
             try {
               final subjects =
-                  await _subjectRepository.getSubjectsByExam(selectedExam.id);
+                  await _subjectRepository.getSubjectsByExam(selectedExamId);
+              if (requestId != loadRequestId) {
+                return;
+              }
               setDialogState(() {
                 sourceSubjects = subjects;
-                selectedSubject =
-                    subjects.isNotEmpty ? subjects.first : null;
+                selectedSubjectId =
+                    subjects.isNotEmpty ? subjects.first.id : null;
                 loadingSubjects = false;
               });
             } catch (error) {
+              if (requestId != loadRequestId) {
+                return;
+              }
               setDialogState(() {
                 loadingSubjects = false;
                 loadError = error.toString();
@@ -228,7 +236,8 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
 
           return StatefulBuilder(
             builder: (dialogStateContext, setDialogState) {
-              if (loadingSubjects && sourceSubjects.isEmpty && loadError == null) {
+              if (!initialLoadTriggered) {
+                initialLoadTriggered = true;
                 Future.microtask(() => loadSubjects(setDialogState));
               }
 
@@ -239,22 +248,25 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      DropdownButtonFormField<ExamModel>(
-                        value: selectedExam,
+                      DropdownButtonFormField<int>(
+                        value: selectedExamId,
                         decoration: const InputDecoration(
                           labelText: 'Source Exam',
                         ),
                         items: sourceExams
-                            .map((exam) => DropdownMenuItem<ExamModel>(
-                                  value: exam,
+                            .map((exam) => DropdownMenuItem<int>(
+                                  value: exam.id,
                                   child: Text(exam.name),
                                 ))
                             .toList(),
                         onChanged: (value) {
                           if (value == null) return;
-                          selectedExam = value;
-                          sourceSubjects = [];
-                          selectedSubject = null;
+                          setDialogState(() {
+                            selectedExamId = value;
+                            sourceSubjects = [];
+                            selectedSubjectId = null;
+                            loadError = null;
+                          });
                           loadSubjects(setDialogState);
                         },
                       ),
@@ -275,19 +287,19 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                       else if (sourceSubjects.isEmpty)
                         const Text('No subjects found in selected source exam.')
                       else
-                        DropdownButtonFormField<SubjectModel>(
-                          value: selectedSubject,
+                        DropdownButtonFormField<int>(
+                          value: selectedSubjectId,
                           decoration: const InputDecoration(
                             labelText: 'Source Subject',
                           ),
                           items: sourceSubjects
-                              .map((subject) => DropdownMenuItem<SubjectModel>(
-                                    value: subject,
+                              .map((subject) => DropdownMenuItem<int>(
+                                    value: subject.id,
                                     child: Text(subject.name),
                                   ))
                               .toList(),
                           onChanged: (value) => setDialogState(() {
-                            selectedSubject = value;
+                            selectedSubjectId = value;
                           }),
                         ),
                       const SizedBox(height: 12),
@@ -312,10 +324,12 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                     child: const Text('Cancel'),
                   ),
                   FilledButton.icon(
-                    onPressed: (loadingSubjects || selectedSubject == null)
+                    onPressed: (loadingSubjects || selectedSubjectId == null)
                         ? null
                         : () async {
-                            final sourceSubject = selectedSubject!;
+                            final sourceSubject = sourceSubjects.firstWhere(
+                              (subject) => subject.id == selectedSubjectId,
+                            );
                             try {
                               final displayOrder =
                                   int.tryParse(orderCtrl.text.trim());
