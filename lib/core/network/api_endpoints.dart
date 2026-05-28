@@ -33,6 +33,7 @@ class ApiEndpoints {
   static String topicsByChapter(int chapterId) =>
       '/syllabus/topics/chapter/$chapterId';
   static const String createTopic = '/syllabus/topics';
+  static const String bulkCreateTopics = '/syllabus/topics/bulk';
   static String updateTopic(int id) => '/syllabus/topics/$id';
   static String deleteTopic(int id) => '/syllabus/topics/$id';
 }

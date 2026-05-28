@@ -42,6 +42,18 @@ class SyllabusRepository {
     return TopicModel.fromJson(res.data['data'] as Map<String, dynamic>);
   }
 
+  Future<List<TopicModel>> bulkCreateTopics(
+      List<Map<String, dynamic>> topics) async {
+    final res = await _client.dio.post(
+      ApiEndpoints.bulkCreateTopics,
+      data: {'topics': topics},
+    );
+    final list = res.data['data'] as List<dynamic>;
+    return list
+        .map((e) => TopicModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<TopicModel> updateTopic(int id, Map<String, dynamic> data) async {
     final res = await _client.dio.put(ApiEndpoints.updateTopic(id), data: data);
     return TopicModel.fromJson(res.data['data'] as Map<String, dynamic>);

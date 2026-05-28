@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/topic_model.dart';
 import '../../../data/repositories/syllabus_repository.dart';
+import 'topic_bulk_upload_dialog.dart';
 
 class TopicsScreen extends StatefulWidget {
   final int chapterId;
@@ -41,6 +42,48 @@ class _TopicsScreenState extends State<TopicsScreen> {
       setState(() { _topics = topics; _loading = false; });
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  Future<void> _showBulkUploadDialog() async {
+    final topics = await showTopicBulkUploadDialog(
+      context: context,
+      chapterId: widget.chapterId,
+      startingOrderIndex: _topics.length + 1,
+    );
+    if (!mounted || topics == null || topics.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final created = await _repo.bulkCreateTopics(topics);
+      await _load();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Uploaded ${created.length} topics successfully.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _loading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: AdminColors.error,
+        ),
+      );
     }
   }
 
@@ -202,7 +245,13 @@ class _TopicsScreenState extends State<TopicsScreen> {
         title: Text('${widget.chapterTitle} — Topics'),
         actions: [
           FilledButton.icon(
-            onPressed: () => _showDialog(),
+            onPressed: _loading ? null : _showBulkUploadDialog,
+            icon: const Icon(Icons.upload_file_outlined),
+            label: const Text('Bulk Upload'),
+          ),
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            onPressed: _loading ? null : () => _showDialog(),
             icon: const Icon(Icons.add),
             label: const Text('Add Topic'),
           ),
@@ -230,7 +279,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                         children: [
                           Icon(Icons.topic_rounded,
                               size: 64,
-                              color: AdminColors.primary.withOpacity(0.3)),
+                              color: AdminColors.primary.withValues(alpha: 0.3)),
                           const SizedBox(height: 16),
                           Text('No topics yet',
                               style: Theme.of(context).textTheme.titleMedium),
@@ -252,11 +301,11 @@ class _TopicsScreenState extends State<TopicsScreen> {
                           decoration: BoxDecoration(
                             color: AdminColors.surface,
                             borderRadius: BorderRadius.circular(14),
-                            boxShadow: [
+                            boxShadow: const [
                               BoxShadow(
                                   color: AdminColors.shadow,
                                   blurRadius: 6,
-                                  offset: const Offset(0, 2))
+                                  offset: Offset(0, 2))
                             ],
                           ),
                           child: Row(
@@ -265,7 +314,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                                 width: 44,
                                 height: 44,
                                 decoration: BoxDecoration(
-                                  color: diffColor.withOpacity(0.12),
+                                  color: diffColor.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Center(
@@ -298,7 +347,7 @@ class _TopicsScreenState extends State<TopicsScreen> {
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: diffColor.withOpacity(0.12),
+                                            color: diffColor.withValues(alpha: 0.12),
                                             borderRadius:
                                                 BorderRadius.circular(4),
                                           ),
