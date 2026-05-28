@@ -4,7 +4,10 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../data/models/exam_model.dart';
 import '../../../data/models/subject_model.dart';
+import '../../../data/repositories/exam_repository.dart';
+import '../../../data/repositories/subject_repository.dart';
 import '../../blocs/subject/subject_bloc.dart';
 
 class SubjectsScreen extends StatefulWidget {
@@ -23,10 +26,14 @@ class SubjectsScreen extends StatefulWidget {
 
 class _SubjectsScreenState extends State<SubjectsScreen> {
   late final SubjectBloc _bloc;
+  late final SubjectRepository _subjectRepository;
+  late final ExamRepository _examRepository;
 
   @override
   void initState() {
     super.initState();
+    _subjectRepository = GetIt.I<SubjectRepository>();
+    _examRepository = GetIt.I<ExamRepository>();
     _bloc = GetIt.I<SubjectBloc>()
       ..add(SubjectsLoadRequested(widget.examId));
   }
@@ -167,6 +174,196 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     );
   }
 
+  Future<void> _showCloneSubjectDialog() async {
+    final screenContext = context;
+    try {
+      final exams = await _examRepository.getExams();
+      final sourceExams = exams.where((e) => e.id != widget.examId).toList();
+      if (!mounted) return;
+
+      if (sourceExams.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No other exams found to clone from.')),
+        );
+        return;
+      }
+
+      final orderCtrl = TextEditingController();
+      final currentState = _bloc.state;
+      final suggestedOrder = currentState is SubjectsLoaded
+          ? currentState.subjects.length + 1
+          : 1;
+      orderCtrl.text = suggestedOrder.toString();
+
+      await showDialog(
+        context: context,
+        builder: (ctx) {
+          ExamModel selectedExam = sourceExams.first;
+          List<SubjectModel> sourceSubjects = [];
+          SubjectModel? selectedSubject;
+          bool loadingSubjects = true;
+          String? loadError;
+
+          Future<void> loadSubjects(StateSetter setDialogState) async {
+            setDialogState(() {
+              loadingSubjects = true;
+              loadError = null;
+            });
+            try {
+              final subjects =
+                  await _subjectRepository.getSubjectsByExam(selectedExam.id);
+              setDialogState(() {
+                sourceSubjects = subjects;
+                selectedSubject =
+                    subjects.isNotEmpty ? subjects.first : null;
+                loadingSubjects = false;
+              });
+            } catch (error) {
+              setDialogState(() {
+                loadingSubjects = false;
+                loadError = error.toString();
+              });
+            }
+          }
+
+          return StatefulBuilder(
+            builder: (dialogStateContext, setDialogState) {
+              if (loadingSubjects && sourceSubjects.isEmpty && loadError == null) {
+                Future.microtask(() => loadSubjects(setDialogState));
+              }
+
+              return AlertDialog(
+                title: const Text('Clone Subject From Another Exam'),
+                content: SizedBox(
+                  width: 460,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DropdownButtonFormField<ExamModel>(
+                        value: selectedExam,
+                        decoration: const InputDecoration(
+                          labelText: 'Source Exam',
+                        ),
+                        items: sourceExams
+                            .map((exam) => DropdownMenuItem<ExamModel>(
+                                  value: exam,
+                                  child: Text(exam.name),
+                                ))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          selectedExam = value;
+                          sourceSubjects = [];
+                          selectedSubject = null;
+                          loadSubjects(setDialogState);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      if (loadingSubjects)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: CircularProgressIndicator(),
+                        )
+                      else if (loadError != null)
+                        Text(
+                          'Could not load subjects: $loadError',
+                          style: TextStyle(
+                              color: Theme.of(dialogStateContext)
+                                  .colorScheme
+                                  .error),
+                        )
+                      else if (sourceSubjects.isEmpty)
+                        const Text('No subjects found in selected source exam.')
+                      else
+                        DropdownButtonFormField<SubjectModel>(
+                          value: selectedSubject,
+                          decoration: const InputDecoration(
+                            labelText: 'Source Subject',
+                          ),
+                          items: sourceSubjects
+                              .map((subject) => DropdownMenuItem<SubjectModel>(
+                                    value: subject,
+                                    child: Text(subject.name),
+                                  ))
+                              .toList(),
+                          onChanged: (value) => setDialogState(() {
+                            selectedSubject = value;
+                          }),
+                        ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: orderCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Display order in current exam',
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'This clones subject metadata and all chapters/topics into the current exam.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: (loadingSubjects || selectedSubject == null)
+                        ? null
+                        : () async {
+                            final sourceSubject = selectedSubject!;
+                            try {
+                              final displayOrder =
+                                  int.tryParse(orderCtrl.text.trim());
+                              await _subjectRepository.cloneSubject(
+                                sourceSubjectId: sourceSubject.id,
+                                targetExamId: widget.examId,
+                                displayOrder: displayOrder,
+                              );
+                              if (!screenContext.mounted) return;
+                              Navigator.of(screenContext).pop();
+                              _bloc.add(SubjectsLoadRequested(widget.examId));
+                              ScaffoldMessenger.of(screenContext).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Cloned "${sourceSubject.name}" successfully.',
+                                  ),
+                                ),
+                              );
+                            } catch (error) {
+                              if (!screenContext.mounted) return;
+                              ScaffoldMessenger.of(screenContext).showSnackBar(
+                                SnackBar(
+                                  content: Text(error.toString()),
+                                  backgroundColor: AdminColors.error,
+                                ),
+                              );
+                            }
+                          },
+                    icon: const Icon(Icons.copy_all_outlined),
+                    label: const Text('Clone Subject'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } catch (error) {
+      if (!screenContext.mounted) return;
+      ScaffoldMessenger.of(screenContext).showSnackBar(
+        SnackBar(
+          content: Text(error.toString()),
+          backgroundColor: AdminColors.error,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider.value(
@@ -175,6 +372,12 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
         appBar: AppBar(
           title: Text('${widget.examName} — Subjects'),
           actions: [
+            FilledButton.icon(
+              onPressed: _showCloneSubjectDialog,
+              icon: const Icon(Icons.copy_all_outlined),
+              label: const Text('Clone Subject'),
+            ),
+            const SizedBox(width: 8),
             FilledButton.icon(
               onPressed: () => _showSubjectDialog(),
               icon: const Icon(Icons.add),
@@ -215,7 +418,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                   children: [
                     Icon(Icons.subject_rounded,
                         size: 64,
-                        color: AdminColors.primary.withOpacity(0.3)),
+                        color: AdminColors.primary.withValues(alpha: 0.3)),
                     const SizedBox(height: 16),
                     Text('No subjects yet',
                         style:
@@ -248,11 +451,11 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                   decoration: BoxDecoration(
                     color: AdminColors.surface,
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
                         color: AdminColors.shadow,
                         blurRadius: 6,
-                        offset: const Offset(0, 2),
+                        offset: Offset(0, 2),
                       )
                     ],
                   ),
@@ -262,7 +465,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: cardColor.withOpacity(0.15),
+                          color: cardColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(Icons.subject_rounded,

@@ -21,6 +21,7 @@ class ApiEndpoints {
   static const String subjects = '/subjects';
   static String subjectsByExam(int examId) => '/subjects/exam/$examId';
   static String subjectById(int id) => '/subjects/$id';
+  static String cloneSubject(int id) => '/subjects/$id/clone';
 
   // Syllabus
   static String chaptersBySubject(int subjectId) =>
