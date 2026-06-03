@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/network/api_endpoints.dart';
 import '../../blocs/auth/auth_bloc.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,6 +18,20 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
+
+  static bool get _isLocalBackend {
+    const url = ApiEndpoints.baseUrl;
+    return url.contains('localhost') || url.contains('127.0.0.1');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isLocalBackend) {
+      _emailCtrl.text = 'admin@examsaathi.com';
+      _passwordCtrl.text = 'Admin@123';
+    }
+  }
 
   @override
   void dispose() {

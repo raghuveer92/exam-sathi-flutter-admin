@@ -43,4 +43,14 @@ class ApiEndpoints {
   static const String bulkCreateTopics = '/syllabus/topics/bulk';
   static String updateTopic(int id) => '/syllabus/topics/$id';
   static String deleteTopic(int id) => '/syllabus/topics/$id';
+
+  // Question Bank
+  static const String adminQuestions = '/admin/questions';
+  static String adminQuestionById(int id) => '/admin/questions/$id';
+  static String adminQuestionStatus(int id) => '/admin/questions/$id/status';
+  static String adminQuestionsReplaceForTopic(int topicId) =>
+      '/admin/questions/topic/$topicId/replace';
+  static const String adminTopicTests = '/admin/topic-tests';
+  static String adminTopicTestById(int id) => '/admin/topic-tests/$id';
+  static String adminTopicTestByTopic(int topicId) => '/admin/topic-tests/topic/$topicId';
 }

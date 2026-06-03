@@ -9,12 +9,14 @@ import '../../../data/repositories/syllabus_repository.dart';
 class ChaptersScreen extends StatefulWidget {
   final int examId;
   final int subjectId;
+  final String examName;
   final String subjectName;
 
   const ChaptersScreen({
     super.key,
     required this.examId,
     required this.subjectId,
+    required this.examName,
     required this.subjectName,
   });
 
@@ -258,7 +260,11 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
                                 label: const Text('Topics'),
                                 onPressed: () => context.go(
                                   '/exams/${widget.examId}/subjects/${widget.subjectId}/chapters/${ch.id}/topics',
-                                  extra: ch.title,
+                                  extra: {
+                                    'chapterTitle': ch.title,
+                                    'examName': widget.examName,
+                                    'subjectName': widget.subjectName,
+                                  },
                                 ),
                               ),
                               IconButton(

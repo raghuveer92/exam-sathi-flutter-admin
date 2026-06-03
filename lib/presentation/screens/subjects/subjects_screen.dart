@@ -920,7 +920,10 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                         label: const Text('Chapters'),
                         onPressed: () => context.go(
                           '/exams/${widget.examId}/subjects/${sub.id}/chapters',
-                          extra: sub.name,
+                          extra: {
+                            'subjectName': sub.name,
+                            'examName': widget.examName,
+                          },
                         ),
                       ),
                     ],

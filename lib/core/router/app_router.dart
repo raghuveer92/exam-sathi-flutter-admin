@@ -14,6 +14,7 @@ import '../../presentation/screens/students/students_screen.dart';
 import '../../presentation/screens/shell/admin_shell.dart';
 import '../../presentation/screens/subjects/subjects_screen.dart';
 import '../../presentation/screens/topics/topics_screen.dart';
+import 'route_extra.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -48,8 +49,11 @@ class AppRouter {
                 path: ':examId/subjects',
                 builder: (context, state) {
                   final examId = int.parse(state.pathParameters['examId']!);
-                  final examName = state.extra as String? ?? 'Subjects';
-                  return SubjectsScreen(examId: examId, examName: examName);
+                  final routeExtra = RouteExtra.forSubjects(state.extra);
+                  return SubjectsScreen(
+                    examId: examId,
+                    examName: routeExtra.examName,
+                  );
                 },
                 routes: [
                   GoRoute(
@@ -57,21 +61,30 @@ class AppRouter {
                     builder: (context, state) {
                       final examId = int.parse(state.pathParameters['examId']!);
                       final subjectId = int.parse(state.pathParameters['subjectId']!);
-                      final subjectName = state.extra as String? ?? 'Chapters';
+                      final routeExtra = RouteExtra.forChapters(state.extra);
                       return ChaptersScreen(
-                          examId: examId,
-                          subjectId: subjectId,
-                          subjectName: subjectName);
+                        examId: examId,
+                        subjectId: subjectId,
+                        examName: routeExtra.examName,
+                        subjectName: routeExtra.subjectName,
+                      );
                     },
                     routes: [
                       GoRoute(
                         path: ':chapterId/topics',
                         builder: (context, state) {
+                          final examId = int.parse(state.pathParameters['examId']!);
+                          final subjectId = int.parse(state.pathParameters['subjectId']!);
                           final chapterId = int.parse(state.pathParameters['chapterId']!);
-                          final chapterTitle = state.extra as String? ?? 'Topics';
+                          final routeExtra = RouteExtra.forTopics(state.extra);
                           return TopicsScreen(
-                              chapterId: chapterId,
-                              chapterTitle: chapterTitle);
+                            examId: examId,
+                            subjectId: subjectId,
+                            chapterId: chapterId,
+                            examName: routeExtra.examName,
+                            subjectName: routeExtra.subjectName,
+                            chapterTitle: routeExtra.chapterTitle,
+                          );
                         },
                       ),
                     ],

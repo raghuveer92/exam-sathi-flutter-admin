@@ -2,17 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/router/route_extra.dart';
+import '../../../data/models/question_model.dart';
 import '../../../data/models/topic_model.dart';
+import '../../../data/repositories/question_bank_repository.dart';
 import '../../../data/repositories/syllabus_repository.dart';
+import 'create_mock_test_dialog.dart';
 import 'topic_bulk_upload_dialog.dart';
+import 'view_mock_test_dialog.dart';
 
 class TopicsScreen extends StatefulWidget {
+  final int examId;
+  final int subjectId;
   final int chapterId;
+  final String examName;
+  final String subjectName;
   final String chapterTitle;
 
   const TopicsScreen({
     super.key,
+    required this.examId,
+    required this.subjectId,
     required this.chapterId,
+    required this.examName,
+    required this.subjectName,
     required this.chapterTitle,
   });
 
@@ -22,7 +35,9 @@ class TopicsScreen extends StatefulWidget {
 
 class _TopicsScreenState extends State<TopicsScreen> {
   late final SyllabusRepository _repo;
+  late final QuestionBankRepository _questionRepo;
   List<TopicModel> _topics = [];
+  Map<int, TopicTestConfigModel> _mockTestsByTopicId = {};
   bool _loading = true;
   String? _error;
 
@@ -32,14 +47,28 @@ class _TopicsScreenState extends State<TopicsScreen> {
   void initState() {
     super.initState();
     _repo = GetIt.I<SyllabusRepository>();
+    _questionRepo = GetIt.I<QuestionBankRepository>();
     _load();
   }
 
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final topics = await _repo.getTopicsByChapter(widget.chapterId);
-      setState(() { _topics = topics; _loading = false; });
+      final results = await Future.wait([
+        _repo.getTopicsByChapter(widget.chapterId),
+        _questionRepo.listTopicTests(),
+      ]);
+      final topics = results[0] as List<TopicModel>;
+      final configs = results[1] as List<TopicTestConfigModel>;
+      final topicIds = topics.map((t) => t.id).toSet();
+      setState(() {
+        _topics = topics;
+        _mockTestsByTopicId = {
+          for (final c in configs)
+            if (c.isConfigured && topicIds.contains(c.topicId)) c.topicId: c,
+        };
+        _loading = false;
+      });
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
     }
@@ -190,6 +219,150 @@ class _TopicsScreenState extends State<TopicsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _openMockTestDialog(TopicModel topic) async {
+    final saved = await showCreateMockTestDialog(
+      context: context,
+      examId: widget.examId,
+      subjectId: widget.subjectId,
+      chapterId: widget.chapterId,
+      examName: widget.examName,
+      subjectName: widget.subjectName,
+      chapterTitle: widget.chapterTitle,
+      topic: topic,
+    );
+    if (saved == true) _load();
+  }
+
+  Future<void> _viewMockTest(TopicModel topic, TopicTestConfigModel config) async {
+    await showViewMockTestDialog(
+      context: context,
+      topic: topic,
+      config: config,
+    );
+  }
+
+  void _confirmDeleteMockTest(TopicModel topic, TopicTestConfigModel config) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Mock Test'),
+        content: Text(
+          'Delete mock test for "${topic.title}"?\n\n'
+          'This removes the test configuration and clears questions for this topic.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AdminColors.error),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _questionRepo.deleteTopicTest(config.id!);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Mock test deleted for "${topic.title}".')),
+                  );
+                  _load();
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(errorMessage(e)),
+                      backgroundColor: AdminColors.error,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mockTestActions(TopicModel topic) {
+    final config = _mockTestsByTopicId[topic.id];
+    if (config == null) {
+      return TextButton.icon(
+        icon: const Icon(Icons.quiz_outlined, size: 18),
+        label: const Text('Create Mock Test'),
+        onPressed: () => _openMockTestDialog(topic),
+      );
+    }
+
+    final statusColor = config.isActive ? AdminColors.success : Colors.grey;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: statusColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.quiz, size: 16, color: statusColor),
+              const SizedBox(width: 6),
+              Text(
+                '${config.numQuestions} Qs · ${config.durationMinutes}m · '
+                '${config.isActive ? 'Active' : 'Inactive'}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: statusColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuButton<String>(
+          tooltip: 'Mock test actions',
+          onSelected: (action) {
+            switch (action) {
+              case 'view':
+                _viewMockTest(topic, config);
+              case 'edit':
+                _openMockTestDialog(topic);
+              case 'delete':
+                _confirmDeleteMockTest(topic, config);
+            }
+          },
+          itemBuilder: (_) => [
+            const PopupMenuItem(
+              value: 'view',
+              child: ListTile(
+                leading: Icon(Icons.visibility_outlined),
+                title: Text('View'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'edit',
+              child: ListTile(
+                leading: Icon(Icons.edit_outlined),
+                title: Text('Edit'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem(
+              value: 'delete',
+              child: ListTile(
+                leading: Icon(Icons.delete_outline, color: AdminColors.error),
+                title: Text('Delete', style: TextStyle(color: AdminColors.error)),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -384,11 +557,26 @@ class _TopicsScreenState extends State<TopicsScreen> {
                                                 fontWeight: FontWeight.w600),
                                           ),
                                         ),
+                                        if (_mockTestsByTopicId.containsKey(t.id)) ...[
+                                          const Text('  ·  '),
+                                          Icon(Icons.quiz_outlined,
+                                              size: 14, color: AdminColors.success),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Mock test',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: AdminColors.success,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ],
                                 ),
                               ),
+                              _mockTestActions(t),
                               IconButton(
                                 icon: const Icon(Icons.edit_outlined),
                                 onPressed: () => _showDialog(topic: t),
