@@ -129,7 +129,7 @@ class _AdminSidebar extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 decoration: BoxDecoration(
                   color: isActive
-                      ? AdminColors.sidebarActive.withOpacity(0.2)
+                      ? AdminColors.sidebarActive.withValues(alpha: 0.2)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                 ),

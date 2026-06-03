@@ -9,7 +9,6 @@ class AdminAppTheme {
           seedColor: AdminColors.primary,
           brightness: Brightness.light,
           surface: AdminColors.surface,
-          background: AdminColors.background,
         ),
         scaffoldBackgroundColor: AdminColors.background,
         fontFamily: 'Poppins',

@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../data/models/exam_subject_group_model.dart';
 import '../../../data/models/subject_model.dart';
 import '../../../data/repositories/exam_repository.dart';
 import '../../../data/repositories/subject_repository.dart';
@@ -27,12 +28,15 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
   late final SubjectBloc _bloc;
   late final SubjectRepository _subjectRepository;
   late final ExamRepository _examRepository;
+  List<ExamSubjectGroupModel> _groups = const [];
+  bool _groupsLoading = true;
 
   @override
   void initState() {
     super.initState();
     _subjectRepository = GetIt.I<SubjectRepository>();
     _examRepository = GetIt.I<ExamRepository>();
+    _refreshGroups(showErrors: false);
     _bloc = GetIt.I<SubjectBloc>()
       ..add(SubjectsLoadRequested(widget.examId));
   }
@@ -41,6 +45,38 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
   void dispose() {
     _bloc.close();
     super.dispose();
+  }
+
+  Future<void> _refreshGroups({bool showErrors = true}) async {
+    try {
+      final groups = await _subjectRepository.getSubjectGroupsByExam(widget.examId);
+      if (!mounted) return;
+      setState(() {
+        _groups = groups;
+        _groupsLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _groupsLoading = false);
+      if (showErrors) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not load subject groups: $error'),
+            backgroundColor: AdminColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  String _selectionRuleLabel(ExamSubjectGroupModel group) {
+    if (!group.isOptional) {
+      return 'Mandatory';
+    }
+    if (group.maxSelection <= 1) {
+      return group.minSelection > 0 ? 'Pick 1 subject' : 'Optional single pick';
+    }
+    return 'Pick ${group.minSelection}-${group.maxSelection} subjects';
   }
 
   void _showSubjectDialog({SubjectModel? subject}) {
@@ -55,91 +91,287 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     final orderCtrl = TextEditingController(
         text: (subject?.displayOrder ?? 0).toString());
     final formKey = GlobalKey<FormState>();
+    int? selectedGroupId = subject?.groupId ?? _groups.firstOrNull?.id;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(subject == null ? 'Add Subject' : 'Edit Subject'),
-        content: SizedBox(
-          width: 420,
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameCtrl,
-                    decoration:
-                        const InputDecoration(labelText: 'Name *'),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: descCtrl,
-                    decoration: const InputDecoration(
-                        labelText: 'Description'),
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: iconCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Icon name *',
-                      hintText: 'e.g. calculate, science, menu_book',
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(subject == null ? 'Add Subject' : 'Edit Subject'),
+          content: SizedBox(
+            width: 420,
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nameCtrl,
+                      decoration:
+                          const InputDecoration(labelText: 'Name *'),
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Required' : null,
                     ),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: colorCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Color (#hex) *',
-                      hintText: '#1565C0',
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: descCtrl,
+                      decoration: const InputDecoration(
+                          labelText: 'Description'),
+                      maxLines: 2,
                     ),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: orderCtrl,
-                    decoration: const InputDecoration(
-                        labelText: 'Display order'),
-                    keyboardType: TextInputType.number,
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      value: selectedGroupId,
+                      decoration: const InputDecoration(labelText: 'Subject Group'),
+                      items: _groups
+                          .map((group) => DropdownMenuItem<int>(
+                                value: group.id,
+                                child: Text(group.groupName),
+                              ))
+                          .toList(),
+                      onChanged: (value) => setDialogState(() => selectedGroupId = value),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: iconCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Icon name *',
+                        hintText: 'e.g. calculate, science, menu_book',
+                      ),
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: colorCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Color (#hex) *',
+                        hintText: '#1565C0',
+                      ),
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: orderCtrl,
+                      decoration: const InputDecoration(
+                          labelText: 'Display order'),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                if (!formKey.currentState!.validate()) return;
+                final data = {
+                  'examId': widget.examId,
+                  'name': nameCtrl.text.trim(),
+                  'description': descCtrl.text.trim(),
+                  'iconName': iconCtrl.text.trim(),
+                  'colorCode': colorCtrl.text.trim(),
+                  'displayOrder':
+                      int.tryParse(orderCtrl.text.trim()) ?? 0,
+                  'isActive': true,
+                  'groupId': selectedGroupId,
+                };
+                if (subject == null) {
+                  _bloc.add(SubjectCreateRequested(data));
+                } else {
+                  _bloc.add(SubjectUpdateRequested(
+                      id: subject.id, data: data));
+                }
+                Navigator.pop(ctx);
+              },
+              child: Text(subject == null ? 'Add' : 'Update'),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _showGroupDialog({ExamSubjectGroupModel? group}) async {
+    final formKey = GlobalKey<FormState>();
+    final nameCtrl = TextEditingController(text: group?.groupName ?? '');
+    final minCtrl = TextEditingController(text: (group?.minSelection ?? 0).toString());
+    final maxCtrl = TextEditingController(text: (group?.maxSelection ?? 0).toString());
+    final orderCtrl = TextEditingController(text: (group?.displayOrder ?? _groups.length).toString());
+    var isOptional = group?.isOptional ?? false;
+    final currentSubjects = _bloc.state is SubjectsLoaded
+        ? (_bloc.state as SubjectsLoaded).subjects
+        : <SubjectModel>[];
+    final selectedSubjectIds = <int>{
+      ...?group?.subjects.map((subject) => subject.id),
+    };
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(group == null ? 'Add Subject Group' : 'Edit Subject Group'),
+          content: SizedBox(
+            width: 520,
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(labelText: 'Group name *'),
+                      validator: (value) => (value == null || value.trim().isEmpty) ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Optional Group'),
+                      subtitle: const Text('Mandatory groups stay visible for every student.'),
+                      value: isOptional,
+                      onChanged: (value) => setDialogState(() => isOptional = value),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: minCtrl,
+                            decoration: const InputDecoration(labelText: 'Min selection'),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: maxCtrl,
+                            decoration: const InputDecoration(labelText: 'Max selection'),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: orderCtrl,
+                      decoration: const InputDecoration(labelText: 'Display order'),
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Assigned Subjects',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    if (currentSubjects.isEmpty)
+                      const Text('Create or add a subject first, then assign it here.')
+                    else
+                      ...currentSubjects.map((subject) => CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            value: selectedSubjectIds.contains(subject.id),
+                            title: Text(subject.name),
+                            subtitle: subject.groupName == null
+                                ? null
+                                : Text('Currently in ${subject.groupName}'),
+                            onChanged: (value) {
+                              setDialogState(() {
+                                if (value ?? false) {
+                                  selectedSubjectIds.add(subject.id);
+                                } else {
+                                  selectedSubjectIds.remove(subject.id);
+                                }
+                              });
+                            },
+                          )),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final data = {
+                  'examId': widget.examId,
+                  'groupName': nameCtrl.text.trim(),
+                  'isOptional': isOptional,
+                  'minSelection': int.tryParse(minCtrl.text.trim()) ?? 0,
+                  'maxSelection': int.tryParse(maxCtrl.text.trim()) ?? 0,
+                  'displayOrder': int.tryParse(orderCtrl.text.trim()) ?? 0,
+                  'subjectIds': selectedSubjectIds.toList(),
+                };
+                try {
+                  if (group == null) {
+                    await _subjectRepository.createSubjectGroup(data);
+                  } else {
+                    await _subjectRepository.updateSubjectGroup(group.id, data);
+                  }
+                  if (!ctx.mounted || !mounted) return;
+                  Navigator.of(ctx).pop();
+                  await _refreshGroups();
+                  _bloc.add(SubjectsLoadRequested(widget.examId));
+                } catch (error) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(error.toString()),
+                      backgroundColor: AdminColors.error,
+                    ),
+                  );
+                }
+              },
+              child: Text(group == null ? 'Create Group' : 'Update Group'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteGroup(ExamSubjectGroupModel group) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Subject Group'),
+        content: Text('Delete "${group.groupName}"? Subjects will fall back to the exam\'s mandatory group.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              if (!formKey.currentState!.validate()) return;
-              final data = {
-                'examId': widget.examId,
-                'name': nameCtrl.text.trim(),
-                'description': descCtrl.text.trim(),
-                'iconName': iconCtrl.text.trim(),
-                'colorCode': colorCtrl.text.trim(),
-                'displayOrder':
-                    int.tryParse(orderCtrl.text.trim()) ?? 0,
-                'isActive': true,
-              };
-              if (subject == null) {
-                _bloc.add(SubjectCreateRequested(data));
-              } else {
-                _bloc.add(SubjectUpdateRequested(
-                    id: subject.id, data: data));
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              try {
+                await _subjectRepository.deleteSubjectGroup(group.id);
+                if (!ctx.mounted || !mounted) return;
+                Navigator.of(ctx).pop();
+                await _refreshGroups();
+                _bloc.add(SubjectsLoadRequested(widget.examId));
+              } catch (error) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(error.toString()),
+                    backgroundColor: AdminColors.error,
+                  ),
+                );
               }
-              Navigator.pop(ctx);
             },
-            child: Text(subject == null ? 'Add' : 'Update'),
+            style: FilledButton.styleFrom(backgroundColor: AdminColors.error),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -202,6 +434,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
           int selectedExamId = sourceExams.first.id;
           List<SubjectModel> sourceSubjects = [];
           int? selectedSubjectId;
+          int? selectedGroupId = _groups.firstOrNull?.id;
           bool loadingSubjects = true;
           String? loadError;
           bool initialLoadTriggered = false;
@@ -312,6 +545,22 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                         ),
                         keyboardType: TextInputType.number,
                       ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<int>(
+                        value: selectedGroupId,
+                        decoration: const InputDecoration(
+                          labelText: 'Target Group in Current Exam',
+                        ),
+                        items: _groups
+                            .map((group) => DropdownMenuItem<int>(
+                                  value: group.id,
+                                  child: Text(group.groupName),
+                                ))
+                            .toList(),
+                        onChanged: (value) => setDialogState(() {
+                          selectedGroupId = value;
+                        }),
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         'This links the selected shared subject into ${widget.examName}. '
@@ -340,6 +589,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                                 sourceSubjectId: sourceSubject.id,
                                 targetExamId: widget.examId,
                                 displayOrder: displayOrder,
+                                groupId: selectedGroupId,
                               );
                               if (!screenContext.mounted) return;
                               Navigator.of(screenContext).pop();
@@ -385,26 +635,38 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
   Widget build(BuildContext context) {
     return BlocProvider.value(
       value: _bloc,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('${widget.examName} — Subjects'),
-          actions: [
-            FilledButton.icon(
-              onPressed: _showCloneSubjectDialog,
-              icon: const Icon(Icons.copy_all_outlined),
-              label: const Text('Add Existing Subject'),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: () => _showSubjectDialog(),
-              icon: const Icon(Icons.add),
-              label: const Text('Add Subject'),
-            ),
-            const SizedBox(width: 12),
-          ],
-        ),
-        body: BlocBuilder<SubjectBloc, SubjectState>(
-          builder: (context, state) {
+      child: BlocListener<SubjectBloc, SubjectState>(
+        listener: (context, state) {
+          if (state is SubjectsLoaded) {
+            _refreshGroups(showErrors: false);
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text('${widget.examName} — Subjects'),
+            actions: [
+              FilledButton.icon(
+                onPressed: () => _showGroupDialog(),
+                icon: const Icon(Icons.layers_outlined),
+                label: const Text('Add Group'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: _showCloneSubjectDialog,
+                icon: const Icon(Icons.copy_all_outlined),
+                label: const Text('Add Existing Subject'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: () => _showSubjectDialog(),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Subject'),
+              ),
+              const SizedBox(width: 12),
+            ],
+          ),
+          body: BlocBuilder<SubjectBloc, SubjectState>(
+            builder: (context, state) {
             if (state is SubjectLoading) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -449,7 +711,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
             }
             return ListView.separated(
               padding: const EdgeInsets.all(20),
-              itemCount: subjects.length + 1,
+              itemCount: subjects.length + 2,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
                 if (i == 0) {
@@ -477,7 +739,107 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                   );
                 }
 
-                final sub = subjects[i - 1];
+                if (i == 1) {
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AdminColors.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: AdminColors.shadow,
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Subject Groups',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => _showGroupDialog(),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Create Group'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (_groupsLoading)
+                          const Center(child: CircularProgressIndicator())
+                        else
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: _groups.map((group) {
+                              return Container(
+                                width: 300,
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: group.isOptional
+                                        ? AdminColors.primary.withValues(alpha: 0.25)
+                                        : const Color(0xFFD8DDEA),
+                                  ),
+                                  color: group.isOptional
+                                      ? AdminColors.primary.withValues(alpha: 0.05)
+                                      : Colors.white,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            group.groupName,
+                                            style: const TextStyle(fontWeight: FontWeight.w700),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          onPressed: () => _showGroupDialog(group: group),
+                                          icon: const Icon(Icons.edit_outlined, size: 18),
+                                        ),
+                                        IconButton(
+                                          onPressed: group.isOptional ? () => _confirmDeleteGroup(group) : null,
+                                          icon: const Icon(Icons.delete_outline, size: 18),
+                                          color: AdminColors.error,
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      _selectionRuleLabel(group),
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: group.subjects.isEmpty
+                                          ? const [Text('No subjects assigned yet')]
+                                          : group.subjects
+                                              .map((subject) => Chip(label: Text(subject.name)))
+                                              .toList(),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                      ],
+                    ),
+                  );
+                }
+
+                final sub = subjects[i - 2];
                 Color cardColor;
                 try {
                   final hex =
@@ -528,6 +890,11 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                                   .textTheme
                                   .bodySmall,
                             ),
+                            if (sub.groupName != null)
+                              Text(
+                                '${sub.groupName}${sub.groupOptional == true ? ' · Optional' : ' · Mandatory'}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
                             Text(
                               'Shared syllabus',
                               style: Theme.of(context)
@@ -561,7 +928,8 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                 );
               },
             );
-          },
+            },
+          ),
         ),
       ),
     );

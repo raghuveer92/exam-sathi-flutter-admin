@@ -1,4 +1,3 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -154,23 +153,30 @@ class _StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: data.color.withOpacity(0.12),
+              color: data.color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(data.icon, color: data.color, size: 20),
+            child: Icon(data.icon, color: data.color, size: 18),
           ),
-          const SizedBox(height: 10),
-          Text(data.value,
-              style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: data.color)),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(data.value,
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: data.color)),
+          ),
           Text(data.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   fontSize: 11, color: AdminColors.textSecondary)),
         ],
@@ -207,7 +213,7 @@ class _TopStudentsCard extends StatelessWidget {
           final s = students[i];
           return ListTile(
             leading: CircleAvatar(
-              backgroundColor: AdminColors.primary.withOpacity(0.12),
+              backgroundColor: AdminColors.primary.withValues(alpha: 0.12),
               child: Text(
                 s.fullName[0].toUpperCase(),
                 style: const TextStyle(

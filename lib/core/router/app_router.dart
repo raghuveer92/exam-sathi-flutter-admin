@@ -1,7 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../presentation/blocs/auth/auth_bloc.dart';
 import '../../presentation/screens/auth/login_screen.dart';
@@ -25,7 +27,7 @@ class AppRouter {
       if (loggedIn && goingToLogin) return '/dashboard';
       return null;
     },
-    refreshListenable: _GoRouterRefreshStream(),
+    refreshListenable: _GoRouterRefreshStream(GetIt.I<AuthBloc>().stream),
     routes: [
       GoRoute(
         path: '/login',
@@ -90,7 +92,16 @@ class AppRouter {
 
 /// Connects GoRouter's refresh mechanism to BLoC state changes.
 class _GoRouterRefreshStream extends ChangeNotifier {
-  _GoRouterRefreshStream() {
+  late final StreamSubscription<dynamic> _subscription;
+
+  _GoRouterRefreshStream(Stream<dynamic> stream) {
     notifyListeners();
+    _subscription = stream.listen((_) => notifyListeners());
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
   }
 }

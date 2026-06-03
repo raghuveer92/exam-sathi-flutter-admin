@@ -1,7 +1,10 @@
 class ApiEndpoints {
   ApiEndpoints._();
 
-  static const String baseUrl = 'https://exam-sathi.onrender.com/api/v1';
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://exam-sathi.onrender.com/api/v1',
+  );
 
   // Auth
   static const String login = '/auth/login';
@@ -22,6 +25,9 @@ class ApiEndpoints {
   static String subjectsByExam(int examId) => '/subjects/exam/$examId';
   static String subjectById(int id) => '/subjects/$id';
   static String cloneSubject(int id) => '/subjects/$id/clone';
+  static String subjectGroupsByExam(int examId) => '/subject-groups/exam/$examId';
+  static const String subjectGroups = '/subject-groups';
+  static String subjectGroupById(int groupId) => '/subject-groups/$groupId';
 
   // Syllabus
   static String chaptersBySubject(int subjectId) =>

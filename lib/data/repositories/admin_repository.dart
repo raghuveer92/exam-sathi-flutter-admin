@@ -33,7 +33,7 @@ class AdminRepository {
   Future<AdminUserModel> updateStudentStatus(int id, {required bool isActive}) async {
     final response = await _client.dio.patch(
       ApiEndpoints.adminStudentStatus(id),
-      data: {'isActive': isActive},
+      queryParameters: {'isActive': isActive},
     );
     final data = (response.data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
     return AdminUserModel.fromJson(data);

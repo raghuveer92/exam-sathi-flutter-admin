@@ -114,7 +114,7 @@ class _StudentTile extends StatelessWidget {
       ),
       child: Row(children: [
         CircleAvatar(
-          backgroundColor: AdminColors.primary.withOpacity(0.12),
+          backgroundColor: AdminColors.primary.withValues(alpha: 0.12),
           child: Text(
             student.firstName[0].toUpperCase(),
             style: const TextStyle(

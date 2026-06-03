@@ -36,7 +36,7 @@ Future<void> setupDependencies() async {
   sl.registerLazySingleton<SyllabusRepository>(
       () => SyllabusRepository(client: sl<ApiClient>()));
 
-  sl.registerFactory<AuthBloc>(
+  sl.registerLazySingleton<AuthBloc>(
       () => AuthBloc(authRepository: sl<AuthRepository>()));
   sl.registerFactory<AdminBloc>(
       () => AdminBloc(repository: sl<AdminRepository>()));
