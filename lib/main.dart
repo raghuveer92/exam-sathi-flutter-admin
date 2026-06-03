@@ -7,8 +7,11 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/blocs/auth/auth_bloc.dart';
 
+Object? _semanticsHandle;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _semanticsHandle ??= WidgetsBinding.instance.ensureSemantics();
   await setupDependencies();
   runApp(const AdminApp());
 }

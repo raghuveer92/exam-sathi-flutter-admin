@@ -16,11 +16,19 @@ class ExamsScreen extends StatefulWidget {
 
 class _ExamsScreenState extends State<ExamsScreen> {
   late final ExamBloc _bloc;
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _bloc = GetIt.I<ExamBloc>()..add(ExamsLoadRequested());
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   void _showExamDialog({ExamModel? exam}) {
@@ -128,100 +136,151 @@ class _ExamsScreenState extends State<ExamsScreen> {
   Widget build(BuildContext context) {
     return BlocProvider.value(
       value: _bloc,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Exams'),
-          actions: [
-            FilledButton.icon(
-              onPressed: () => _showExamDialog(),
-              icon: const Icon(Icons.add),
-              label: const Text('Add Exam'),
-            ),
-            const SizedBox(width: 12),
-          ],
-        ),
-        body: BlocBuilder<ExamBloc, ExamState>(
-          builder: (context, state) {
-            if (state is ExamLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (state is ExamError) {
-              return Center(child: Text('Error: ${state.message}'));
-            }
-            if (state is! ExamsLoaded) {
-              return const SizedBox.shrink();
-            }
-            final exams = state.exams;
-            return ListView.separated(
-              padding: const EdgeInsets.all(20),
-              itemCount: exams.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, i) {
-                final exam = exams[i];
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AdminColors.surface,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AdminColors.shadow,
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      )
-                    ],
-                  ),
-                  child: Row(children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AdminColors.primary.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.menu_book_rounded,
-                          color: AdminColors.primary),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(exam.name,
-                              style:
-                                  Theme.of(context).textTheme.titleLarge),
-                          Text(
-                            '${exam.code} · ${exam.subjectCount} subjects',
-                            style:
-                                Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.list_alt_rounded),
-                      tooltip: 'Manage Subjects',
-                      onPressed: () => context.go(
-                          '/exams/${exam.id}/subjects',
-                          extra: exam.name),
-                      color: AdminColors.primary,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined),
-                      onPressed: () => _showExamDialog(exam: exam),
-                      color: AdminColors.primary,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () => _confirmDelete(exam),
-                      color: AdminColors.error,
-                    ),
-                  ]),
-                );
-              },
+      child: BlocListener<ExamBloc, ExamState>(
+        listener: (context, state) {
+          if (state is ExamError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: AdminColors.error,
+              ),
             );
-          },
+            // Reload the list so the error state doesn't clear the screen
+            _bloc.add(ExamsLoadRequested());
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Exams'),
+            actions: [
+              FilledButton.icon(
+                onPressed: () => _showExamDialog(),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Exam'),
+              ),
+              const SizedBox(width: 12),
+            ],
+          ),
+          body: BlocBuilder<ExamBloc, ExamState>(
+            buildWhen: (prev, curr) => curr is! ExamError,
+            builder: (context, state) {
+              if (state is ExamLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state is! ExamsLoaded) {
+                return const SizedBox.shrink();
+              }
+              final query = _searchQuery.trim().toLowerCase();
+              final exams = state.exams.where((exam) {
+                if (query.isEmpty) return true;
+                return exam.name.toLowerCase().contains(query) ||
+                    exam.code.toLowerCase().contains(query);
+              }).toList();
+
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                    child: TextField(
+                      controller: _searchCtrl,
+                      onChanged: (value) =>
+                          setState(() => _searchQuery = value),
+                      decoration: InputDecoration(
+                        hintText: 'Search exams by name or code',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        suffixIcon: _searchQuery.isEmpty
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.close_rounded),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: exams.isEmpty
+                        ? const Center(
+                            child: Text('No exams match your search.'),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.all(20),
+                            itemCount: exams.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 10),
+                            itemBuilder: (context, i) {
+                              final exam = exams[i];
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: AdminColors.surface,
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: AdminColors.shadow,
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    )
+                                  ],
+                                ),
+                                child: Row(children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: AdminColors.primary.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      Icons.menu_book_rounded,
+                                      color: AdminColors.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(exam.name,
+                                            style:
+                                                Theme.of(context).textTheme.titleLarge),
+                                        Text(
+                                          '${exam.code} · ${exam.subjectCount} subjects',
+                                          style:
+                                              Theme.of(context).textTheme.bodyMedium,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.list_alt_rounded),
+                                    tooltip: 'Manage Subjects',
+                                    onPressed: () => context.go(
+                                        '/exams/${exam.id}/subjects',
+                                        extra: exam.name),
+                                    color: AdminColors.primary,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined),
+                                    onPressed: () => _showExamDialog(exam: exam),
+                                    color: AdminColors.primary,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline),
+                                    onPressed: () => _confirmDelete(exam),
+                                    color: AdminColors.error,
+                                  ),
+                                ]),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
