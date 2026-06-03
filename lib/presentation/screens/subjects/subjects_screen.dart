@@ -150,9 +150,11 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Subject'),
-        content:
-            Text('Delete "${subject.name}"? This cannot be undone.'),
+        title: const Text('Remove Subject From Exam'),
+        content: Text(
+          'Remove "${subject.name}" from ${widget.examName}? '
+          'If no other exam uses it, the shared subject and its syllabus will also be deleted.',
+        ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -242,7 +244,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
               }
 
               return AlertDialog(
-                title: const Text('Clone Subject From Another Exam'),
+                title: const Text('Add Existing Subject'),
                 content: SizedBox(
                   width: 460,
                   child: Column(
@@ -311,9 +313,10 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                         keyboardType: TextInputType.number,
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'This clones subject metadata and all chapters/topics into the current exam.',
-                        style: TextStyle(fontSize: 12),
+                      Text(
+                        'This links the selected shared subject into ${widget.examName}. '
+                        'Its chapters and topics remain shared across every linked exam.',
+                        style: const TextStyle(fontSize: 12),
                       ),
                     ],
                   ),
@@ -344,7 +347,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                               ScaffoldMessenger.of(screenContext).showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    'Cloned "${sourceSubject.name}" successfully.',
+                                    'Added shared subject "${sourceSubject.name}" to ${widget.examName}.',
                                   ),
                                 ),
                               );
@@ -359,7 +362,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                             }
                           },
                     icon: const Icon(Icons.copy_all_outlined),
-                    label: const Text('Clone Subject'),
+                    label: const Text('Add Existing Subject'),
                   ),
                 ],
               );
@@ -389,7 +392,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
             FilledButton.icon(
               onPressed: _showCloneSubjectDialog,
               icon: const Icon(Icons.copy_all_outlined),
-              label: const Text('Clone Subject'),
+              label: const Text('Add Existing Subject'),
             ),
             const SizedBox(width: 8),
             FilledButton.icon(
@@ -439,18 +442,42 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                             Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
                     const Text(
-                        'Tap "Add Subject" to create the first one.'),
+                        'Tap "Add Subject" to create the first one or add an existing shared subject.'),
                   ],
                 ),
               );
             }
             return ListView.separated(
               padding: const EdgeInsets.all(20),
-              itemCount: subjects.length,
-              separatorBuilder: (_, __) =>
-                  const SizedBox(height: 10),
+              itemCount: subjects.length + 1,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
-                final sub = subjects[i];
+                if (i == 0) {
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AdminColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AdminColors.primary.withValues(alpha: 0.16),
+                      ),
+                    ),
+                    child: const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline_rounded),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Subjects are shared globally. Removing one unlinks it from this exam first, while chapter and topic edits update the shared syllabus for every exam using it.',
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final sub = subjects[i - 1];
                 Color cardColor;
                 try {
                   final hex =
@@ -497,6 +524,12 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                                     .titleMedium),
                             Text(
                               '${sub.topicCount} topics · order ${sub.displayOrder}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall,
+                            ),
+                            Text(
+                              'Shared syllabus',
                               style: Theme.of(context)
                                   .textTheme
                                   .bodySmall,

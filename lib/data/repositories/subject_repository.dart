@@ -33,8 +33,11 @@ class SubjectRepository {
     return SubjectModel.fromJson(body);
   }
 
-  Future<void> deleteSubject(int id) async {
-    await _client.dio.delete(ApiEndpoints.subjectById(id));
+  Future<void> deleteSubject(int id, {required int examId}) async {
+    await _client.dio.delete(
+      ApiEndpoints.subjectById(id),
+      queryParameters: {'examId': examId},
+    );
   }
 
   Future<SubjectModel> cloneSubject({

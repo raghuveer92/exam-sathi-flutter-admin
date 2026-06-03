@@ -125,7 +125,7 @@ class SubjectBloc extends Bloc<SubjectEvent, SubjectState> {
       SubjectDeleteRequested event, Emitter<SubjectState> emit) async {
     final current = state;
     try {
-      await _repository.deleteSubject(event.id);
+      await _repository.deleteSubject(event.id, examId: event.examId);
       final subjects =
           await _repository.getSubjectsByExam(event.examId);
       emit(SubjectsLoaded(subjects: subjects, examId: event.examId));

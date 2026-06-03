@@ -290,10 +290,35 @@ class _TopicsScreenState extends State<TopicsScreen> {
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.all(20),
-                      itemCount: _topics.length,
+                      itemCount: _topics.length + 1,
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
                       itemBuilder: (context, i) {
-                        final t = _topics[i];
+                        if (i == 0) {
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AdminColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: AdminColors.primary.withValues(alpha: 0.16),
+                              ),
+                            ),
+                            child: const Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.info_outline_rounded),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'These topics are part of the shared syllabus. Editing or deleting one updates it everywhere this subject is used.',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        final t = _topics[i - 1];
                         final diffColor = _difficultyColor(t.difficultyLevel);
                         return Container(
                           padding: const EdgeInsets.symmetric(

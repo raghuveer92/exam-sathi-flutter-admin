@@ -182,7 +182,7 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.menu_book_rounded, size: 64, color: AdminColors.primary.withOpacity(0.3)),
+                          Icon(Icons.menu_book_rounded, size: 64, color: AdminColors.primary.withValues(alpha: 0.3)),
                           const SizedBox(height: 16),
                           Text('No chapters yet', style: Theme.of(context).textTheme.titleMedium),
                           const SizedBox(height: 8),
@@ -192,10 +192,35 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.all(20),
-                      itemCount: _chapters.length,
+                      itemCount: _chapters.length + 1,
                       separatorBuilder: (_, __) => const SizedBox(height: 10),
                       itemBuilder: (context, i) {
-                        final ch = _chapters[i];
+                        if (i == 0) {
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AdminColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: AdminColors.primary.withValues(alpha: 0.16),
+                              ),
+                            ),
+                            child: const Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.info_outline_rounded),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'These chapters belong to a shared subject. Any create, edit, or delete action here affects every exam linked to this subject.',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        final ch = _chapters[i - 1];
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
@@ -209,7 +234,7 @@ class _ChaptersScreenState extends State<ChaptersScreen> {
                                 width: 44,
                                 height: 44,
                                 decoration: BoxDecoration(
-                                  color: AdminColors.primary.withOpacity(0.1),
+                                  color: AdminColors.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Center(
