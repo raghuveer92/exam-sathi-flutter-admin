@@ -14,13 +14,24 @@ class AdminShell extends StatefulWidget {
 }
 
 class _AdminShellState extends State<AdminShell> {
-  // Tracks nav selection based on path
-  static const _routes = ['/dashboard', '/exams', '/students'];
+  static const _mobileRoutes = ['/dashboard', '/exams', '/students'];
 
   int _selectedIndex(BuildContext context) {
     final loc = GoRouterState.of(context).matchedLocation;
-    final idx = _routes.indexWhere((r) => loc.startsWith(r));
-    return idx < 0 ? 0 : idx;
+    if (loc.startsWith('/students')) return 2;
+    if (loc.startsWith('/exam')) return 1;
+    if (loc.startsWith('/featured')) return 1;
+    return 0;
+  }
+
+  int _sidebarIndex(BuildContext context) {
+    final loc = GoRouterState.of(context).matchedLocation;
+    if (loc.startsWith('/featured-exams')) return 3;
+    if (loc.startsWith('/exam-roadmaps')) return 4;
+    if (loc.startsWith('/exam-categories')) return 1;
+    if (loc.startsWith('/exams')) return 2;
+    if (loc.startsWith('/students')) return 5;
+    return 0;
   }
 
   @override
@@ -31,8 +42,8 @@ class _AdminShellState extends State<AdminShell> {
       body: isWide
           ? Row(children: [
               _AdminSidebar(
-                  selectedIndex: _selectedIndex(context),
-                  onTap: (i) => context.go(_routes[i])),
+                  selectedIndex: _sidebarIndex(context),
+                  onTap: (route) => context.go(route)),
               Expanded(child: widget.child),
             ])
           : widget.child,
@@ -40,7 +51,7 @@ class _AdminShellState extends State<AdminShell> {
           ? null
           : NavigationBar(
               selectedIndex: _selectedIndex(context),
-              onDestinationSelected: (i) => context.go(_routes[i]),
+              onDestinationSelected: (i) => context.go(_mobileRoutes[i]),
               destinations: const [
                 NavigationDestination(
                     icon: Icon(Icons.dashboard_outlined),
@@ -62,15 +73,18 @@ class _AdminShellState extends State<AdminShell> {
 
 class _AdminSidebar extends StatelessWidget {
   final int selectedIndex;
-  final void Function(int) onTap;
+  final void Function(String route) onTap;
 
   const _AdminSidebar(
       {required this.selectedIndex, required this.onTap});
 
   static const _items = [
-    _SidebarItem(icon: Icons.dashboard_outlined, label: 'Dashboard'),
-    _SidebarItem(icon: Icons.menu_book_outlined, label: 'Exams'),
-    _SidebarItem(icon: Icons.people_outline, label: 'Students'),
+    _SidebarItem(route: '/dashboard', icon: Icons.dashboard_outlined, label: 'Dashboard'),
+    _SidebarItem(route: '/exam-categories', icon: Icons.category_outlined, label: 'Categories'),
+    _SidebarItem(route: '/exams', icon: Icons.menu_book_outlined, label: 'Exams'),
+    _SidebarItem(route: '/featured-exams', icon: Icons.star_outline, label: 'Featured'),
+    _SidebarItem(route: '/exam-roadmaps', icon: Icons.map_outlined, label: 'Roadmaps'),
+    _SidebarItem(route: '/students', icon: Icons.people_outline, label: 'Students'),
   ];
 
   @override
@@ -119,11 +133,26 @@ class _AdminSidebar extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Text(
+              'EXAM MANAGEMENT',
+              style: TextStyle(
+                color: AdminColors.sidebarText,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ),
           ...List.generate(_items.length, (i) {
             final item = _items[i];
             final isActive = selectedIndex == i;
+            if (i == 0) {
+              // Dashboard before exam management header spacing handled above
+            }
             return GestureDetector(
-              onTap: () => onTap(i),
+              onTap: () => onTap(item.route),
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -183,7 +212,12 @@ class _AdminSidebar extends StatelessWidget {
 }
 
 class _SidebarItem {
+  final String route;
   final IconData icon;
   final String label;
-  const _SidebarItem({required this.icon, required this.label});
+  const _SidebarItem({
+    required this.route,
+    required this.icon,
+    required this.label,
+  });
 }

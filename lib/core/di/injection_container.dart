@@ -6,6 +6,7 @@ import '../../core/network/api_client.dart';
 import '../../data/repositories/admin_repository.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/exam_repository.dart';
+import '../../data/repositories/exam_category_repository.dart';
 import '../../data/repositories/question_bank_repository.dart';
 import '../../data/repositories/subject_repository.dart';
 import '../../data/repositories/syllabus_repository.dart';
@@ -32,6 +33,8 @@ Future<void> setupDependencies() async {
       () => AdminRepository(client: sl<ApiClient>()));
   sl.registerLazySingleton<ExamRepository>(
       () => ExamRepository(client: sl<ApiClient>()));
+  sl.registerLazySingleton<ExamCategoryRepository>(
+      () => ExamCategoryRepository(client: sl<ApiClient>()));
   sl.registerLazySingleton<SubjectRepository>(
       () => SubjectRepository(client: sl<ApiClient>()));
   sl.registerLazySingleton<SyllabusRepository>(

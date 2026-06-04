@@ -10,6 +10,9 @@ import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/chapters/chapters_screen.dart';
 import '../../presentation/screens/dashboard/dashboard_screen.dart';
 import '../../presentation/screens/exams/exams_screen.dart';
+import '../../presentation/screens/exam_management/exam_categories_screen.dart';
+import '../../presentation/screens/exam_management/featured_exams_screen.dart';
+import '../../presentation/screens/exam_management/exam_roadmaps_screen.dart';
 import '../../presentation/screens/students/students_screen.dart';
 import '../../presentation/screens/shell/admin_shell.dart';
 import '../../presentation/screens/subjects/subjects_screen.dart';
@@ -92,6 +95,18 @@ class AppRouter {
                 ],
               ),
             ],
+          ),
+          GoRoute(
+            path: '/exam-categories',
+            builder: (_, __) => const ExamCategoriesScreen(),
+          ),
+          GoRoute(
+            path: '/featured-exams',
+            builder: (_, __) => const FeaturedExamsScreen(),
+          ),
+          GoRoute(
+            path: '/exam-roadmaps',
+            builder: (_, __) => const ExamRoadmapsScreen(),
           ),
           GoRoute(
             path: '/students',

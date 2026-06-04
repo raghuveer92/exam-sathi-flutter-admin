@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/exam_model.dart';
+import '../../../data/repositories/exam_category_repository.dart';
 import '../../blocs/exam/exam_bloc.dart';
 
 class ExamsScreen extends StatefulWidget {
-  const ExamsScreen({super.key});
+  final bool embedMode;
+  const ExamsScreen({super.key, this.embedMode = false});
 
   @override
   State<ExamsScreen> createState() => _ExamsScreenState();
@@ -31,22 +33,34 @@ class _ExamsScreenState extends State<ExamsScreen> {
     super.dispose();
   }
 
-  void _showExamDialog({ExamModel? exam}) {
+  void _showExamDialog({ExamModel? exam}) async {
+    final categories = await GetIt.I<ExamCategoryRepository>().getCategories();
+    if (!mounted) return;
+
     final nameCtrl = TextEditingController(text: exam?.name ?? '');
     final codeCtrl = TextEditingController(text: exam?.code ?? '');
     final descCtrl = TextEditingController(text: exam?.description ?? '');
+    final shortCtrl = TextEditingController(text: exam?.shortDescription ?? '');
     final colorCtrl =
         TextEditingController(text: exam?.colorCode ?? '#6C63FF');
+    final iconCtrl = TextEditingController(text: exam?.iconUrl ?? '');
+    final diffCtrl = TextEditingController(text: exam?.difficultyLevel ?? '');
+    int? categoryId = exam?.categoryId;
+    bool featured = exam?.featured ?? false;
+    bool popular = exam?.popular ?? false;
+    bool isActive = exam?.isActive ?? true;
     final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
         title: Text(exam == null ? 'Add Exam' : 'Edit Exam'),
         content: SizedBox(
-          width: 400,
+          width: 460,
           child: Form(
             key: formKey,
+            child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -65,9 +79,33 @@ class _ExamsScreenState extends State<ExamsScreen> {
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
+                  controller: shortCtrl,
+                  decoration: const InputDecoration(labelText: 'Short description'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
                   controller: descCtrl,
-                  decoration: const InputDecoration(labelText: 'Description'),
+                  decoration: const InputDecoration(labelText: 'Full description'),
                   maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  value: categoryId,
+                  decoration: const InputDecoration(labelText: 'Category'),
+                  items: categories
+                      .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+                      .toList(),
+                  onChanged: (v) => setLocal(() => categoryId = v),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: iconCtrl,
+                  decoration: const InputDecoration(labelText: 'Icon URL'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: diffCtrl,
+                  decoration: const InputDecoration(labelText: 'Difficulty level'),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -75,7 +113,23 @@ class _ExamsScreenState extends State<ExamsScreen> {
                   decoration:
                       const InputDecoration(labelText: 'Color (#hex)'),
                 ),
+                SwitchListTile(
+                  title: const Text('Featured'),
+                  value: featured,
+                  onChanged: (v) => setLocal(() => featured = v),
+                ),
+                SwitchListTile(
+                  title: const Text('Popular'),
+                  value: popular,
+                  onChanged: (v) => setLocal(() => popular = v),
+                ),
+                SwitchListTile(
+                  title: const Text('Active'),
+                  value: isActive,
+                  onChanged: (v) => setLocal(() => isActive = v),
+                ),
               ],
+            ),
             ),
           ),
         ),
@@ -89,9 +143,15 @@ class _ExamsScreenState extends State<ExamsScreen> {
               final data = {
                 'name': nameCtrl.text.trim(),
                 'code': codeCtrl.text.trim().toUpperCase(),
+                'shortDescription': shortCtrl.text.trim(),
                 'description': descCtrl.text.trim(),
+                if (categoryId != null) 'categoryId': categoryId,
+                'iconUrl': iconCtrl.text.trim().isEmpty ? null : iconCtrl.text.trim(),
+                'difficultyLevel': diffCtrl.text.trim().isEmpty ? null : diffCtrl.text.trim(),
                 'colorCode': colorCtrl.text.trim(),
-                'isActive': true,
+                'featured': featured,
+                'popular': popular,
+                'isActive': isActive,
               };
               if (exam == null) {
                 _bloc.add(ExamCreateRequested(data));
@@ -103,6 +163,7 @@ class _ExamsScreenState extends State<ExamsScreen> {
             child: Text(exam == null ? 'Add' : 'Update'),
           ),
         ],
+      ),
       ),
     );
   }
@@ -150,7 +211,9 @@ class _ExamsScreenState extends State<ExamsScreen> {
           }
         },
         child: Scaffold(
-          appBar: AppBar(
+          appBar: widget.embedMode
+              ? null
+              : AppBar(
             title: const Text('Exams'),
             actions: [
               FilledButton.icon(

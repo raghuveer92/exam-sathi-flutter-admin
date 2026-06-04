@@ -20,6 +20,10 @@ class ApiEndpoints {
   static const String exams = '/exams';
   static String examById(int id) => '/exams/$id';
 
+  // Exam catalog admin
+  static const String adminExamCategories = '/admin/exam-categories';
+  static String adminExamCategoryById(int id) => '/admin/exam-categories/$id';
+
   // Subjects
   static const String subjects = '/subjects';
   static String subjectsByExam(int examId) => '/subjects/exam/$examId';
